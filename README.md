@@ -44,7 +44,7 @@ To replicate the analysis, clone the repository and ensure you have the followin
 The study utilizes several unique indices to quantify biological decanalization:
 
 ### 1. Transcriptome Instability Index (TII)
-[cite_start]The TII measures the cumulative deviation of an experimental sample from the "Bonded" control centroid. It is calculated as the **Mean Squared Error (MSE)**:
+The TII measures the cumulative deviation of an experimental sample from the "Bonded" control centroid. It is calculated as the **Mean Squared Error (MSE)**:
 
 $$TII_i = \frac{1}{G} \sum_{g=1}^{G} (x_{i,g} - \mu_{g,B})^2$$
 
