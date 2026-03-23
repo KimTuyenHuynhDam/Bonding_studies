@@ -53,7 +53,7 @@ $$TII_i = \frac{1}{G} \sum_{g=1}^{G} (x_{i,g} - \mu_{g,B})^2$$
 * **$\mu_{g,B}$**: Baseline mean established from the Bonded group.
 
 ### 2. Rarefied Shannon Entropy
-To account for varying sequencing depths or library sizes, counts were rarefied to the minimum sample depth using **`rrarefy`**. [cite_start]This ensures unbiased comparisons of stochasticity across experimental groups.
+To account for varying sequencing depths or library sizes, counts were rarefied to the minimum sample depth using **`rrarefy`**. This ensures unbiased comparisons of stochasticity across experimental groups.
 
 ### 3. Regulatory Gap
 We quantified the discordance between transcriptional and translational outputs—the **"regulatory gap"**—by calculating the Euclidean distance ($d$) for each gene in a two-dimensional multi-omic state space:
