@@ -37,35 +37,37 @@ Processed results and publication-quality figures are organized into specialized
 To replicate the analysis, clone the repository and ensure you have the following R environment:
 * **R version**: 4.5.2
 * **Required Libraries**: `vegan`, `ggplot2`, `dplyr`, `pheatmap`, `clusterProfiler`, `org.Mm.eg.db`, `org.Hs.eg.db`.
-
+  
+```bash
+git clone [https://github.com/KimTuyenHuynhDam/Bonding_studies.git](https://github.com/KimTuyenHuynhDam/Bonding_studies.git) ```
 
 ## 🧬 Key Methodology
 The study utilizes several unique indices to quantify biological decanalization:
 
 ### 1. Transcriptome Instability Index (TII)
-[cite_start]The TII measures the cumulative deviation of an experimental sample from the "Bonded" control centroid[cite: 114]. [cite_start]It is calculated as the **Mean Squared Error (MSE)**[cite: 116]:
+[cite_start]The TII measures the cumulative deviation of an experimental sample from the "Bonded" control centroid. It is calculated as the **Mean Squared Error (MSE)**:
 
 $$TII_i = \frac{1}{G} \sum_{g=1}^{G} (x_{i,g} - \mu_{g,B})^2$$
 
-* [cite_start]**$G$**: Total number of genes/proteins[cite: 118].
-* [cite_start]**$x_{i,g}$**: Log-transformed expression for sample $i$ and gene $g$[cite: 104].
-* **$\mu_{g,B}$**: Baseline mean established from the Bonded group[cite: 115].
+* **$G$**: Total number of genes/proteins.
+* **$x_{i,g}$**: Log-transformed expression for sample $i$ and gene $g$.
+* **$\mu_{g,B}$**: Baseline mean established from the Bonded group.
 
 ### 2. Rarefied Shannon Entropy
-[cite_start]To account for varying sequencing depths or library sizes, counts were rarefied to the minimum sample depth using **`rrarefy`**[cite: 109]. [cite_start]This ensures unbiased comparisons of stochasticity across experimental groups[cite: 109, 198].
+To account for varying sequencing depths or library sizes, counts were rarefied to the minimum sample depth using **`rrarefy`**. [cite_start]This ensures unbiased comparisons of stochasticity across experimental groups.
 
 ### 3. Regulatory Gap
-[cite_start]We quantified the discordance between transcriptional and translational outputs—the **"regulatory gap"**—by calculating the Euclidean distance ($d$) for each gene in a two-dimensional multi-omic state space[cite: 141]:
+We quantified the discordance between transcriptional and translational outputs—the **"regulatory gap"**—by calculating the Euclidean distance ($d$) for each gene in a two-dimensional multi-omic state space:
 
 $$d = \sqrt{(\text{mRNA}_{log2})^2 + (\text{Protein}_{log2})^2}$$
 
-[cite_start]An increase in this distance signifies an escape from homeostatic boundaries, providing a geometric representation of **decanalization**[cite: 143, 144].
+An increase in this distance signifies an escape from homeostatic boundaries, providing a geometric representation of **decanalization**.
 
 ---
 
 ## 🔗 Data Availability
-* [cite_start]**NCBI GEO (A549 Transcriptome)**: [GSE167827](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE167827) [cite: 189]
-* [cite_start]**NCBI GEO (Lung Transcriptome)**: [GSE229537](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE229537) [cite: 191]
+* **NCBI GEO (A549 Transcriptome)**: [GSE167827](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE167827) 
+* **NCBI GEO (Lung Transcriptome)**: [GSE229537](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE229537) 
 * **Proteomics and Raw Matrices**: Available in the root directory of this repository.
 
 ---
@@ -75,4 +77,4 @@ $$d = \sqrt{(\text{mRNA}_{log2})^2 + (\text{Protein}_{log2})^2}$$
 **Email**: [kimtuyenhuynhdam@gmail.com](mailto:kimtuyenhuynhdam@gmail.com) | [huynhdam@email.sc.edu](mailto:huynhdam@email.sc.edu)
 
 **Dr. Hippokratis Kiaris** Department of Drug Discovery and Biomedical Sciences, University of South Carolina  
-[cite_start]**Email**: [kiarish@cop.sc.edu](mailto:kiarish@cop.sc.edu) [cite: 9]
+**Email**: [kiarish@cop.sc.edu](mailto:kiarish@cop.sc.edu) 
