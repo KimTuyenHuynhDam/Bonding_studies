@@ -122,7 +122,7 @@ annotation_df <- data.frame(Group = groups, row.names = clean_labels)
 jpeg(file.path(output_dir, "04_Sera_Heatmap_Supervised.jpeg"), width = 1000, height = 1200, res = 150)
 pheatmap(log_data[top_50, ], annotation_col = annotation_df, scale = "row", 
          cluster_cols = FALSE, show_colnames = TRUE,
-         main = "Top 50 Unstable Markers (Supervised Grouping)",
+         main = "Top 50 Unstable Markers",
          color = colorRampPalette(c("navy", "white", "firebrick3"))(100))
 dev.off()
 

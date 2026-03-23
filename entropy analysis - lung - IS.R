@@ -1,7 +1,7 @@
 # ==============================================================================
 # Refined RNAseq Analysis: Lung Tissue (B, BD, V)
 # Project: IS-Bonding Studies
-# Final Version: COMPLETE SUITE (Diversity, TII, Volcano, PCA, Heatmaps, GO)
+# Final Version: COMPLETE SUITE (Diversity, TII, Volcano,  Heatmaps, GO)
 # ==============================================================================
 
 # 1. SETUP & LIBRARIES
@@ -135,30 +135,10 @@ pheatmap(log_data[top_50, ], annotation_col = annotation_df, scale = "row",
          color = colorRampPalette(c("navy", "white", "firebrick3"))(100))
 dev.off()
 
-# ==============================================================================
-# SECTION 4: PCA & LOADINGS
-# ==============================================================================
 
-pca_res <- prcomp(t(log_data[apply(log_data, 1, var) > 0, ]), scale. = TRUE)
-pca_df <- data.frame(PC1 = pca_res$x[,1], PC2 = pca_res$x[,2], Group = groups)
-p_pca <- ggplot(pca_df, aes(x = PC1, y = PC2, color = Group, shape = Group)) +
-  geom_point(size = 5) + theme_bw() + labs(title = "PCA: Lung Sample Clustering")
-ggsave(file.path(output_dir, "04a_Lung_PCA.jpeg"), p_pca, width = 8, height = 6)
-
-pc_loadings <- as.data.frame(pca_res$rotation) %>% mutate(Gene = rownames(.)) %>%
-  dplyr::select(Gene, PC1, PC2) %>% arrange(desc(abs(PC2))) 
-write.csv(pc_loadings, file.path(output_dir, "04b_Lung_PCA_Loadings.csv"), row.names = FALSE)
-
-# # Top Marker Boxplot (The most unstable gene)
-# top_gene <- marker_list$Gene[1]
-# p_top <- ggplot(diversity_results, aes(x = Group, y = as.numeric(log_data[top_gene,]), fill = Group)) +
-#   geom_boxplot(alpha = 0.7) + geom_jitter(width = 0.1) + theme_minimal() + 
-#   labs(title = paste("Top Unstable Marker:", top_gene), y = "log2(FPKM+1)")
-# ggsave(file.path(output_dir, "04c_Lung_Top_Marker_Check.jpeg"), p_top, width = 8, height = 6)
-# 
 
 # ==============================================================================
-# SECTION 4c: TOP MARKER CHECK (With Significance Brackets)
+# SECTION 4: TOP MARKER CHECK (With Significance Brackets)
 # ==============================================================================
 
 # 1. Identify the absolute most unstable gene
@@ -202,4 +182,3 @@ print(p_top_marker)
 go_res <- enrichGO(gene = head(marker_list$Gene, 200), OrgDb = org.Mm.eg.db, keyType = "SYMBOL", ont = "BP")
 ggsave(file.path(output_dir, "05_Lung_Pathways.jpeg"), dotplot(go_res), width = 10, height = 7)
 
-print("Lung RNAseq Analysis Complete. All graphs and tables are now in the output folder.")
