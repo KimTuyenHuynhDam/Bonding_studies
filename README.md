@@ -38,7 +38,7 @@ To replicate the analysis, clone the repository and ensure you have the followin
 * **R version**: 4.5.2
 * **Required Libraries**: `vegan`, `ggplot2`, `dplyr`, `pheatmap`, `clusterProfiler`, `org.Mm.eg.db`, `org.Hs.eg.db`.
 
-  
+---  
 
 ## 🧬 Key Methodology
 The study utilizes several unique indices to quantify biological decanalization:
