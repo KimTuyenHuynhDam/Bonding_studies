@@ -1,10 +1,10 @@
 # ==============================================================================
 # Consolidated RNAseq Analysis: Serum-treated A549 Cells
-# Final Version: Supervised Grouping & Top Marker with P-Values
+
 # ==============================================================================
 
 # 1. SETUP & LIBRARIES
-set.seed(42) # ENSURES P-VALUES AND RAREFACTION ARE IDENTICAL EVERY RUN
+set.seed(100) # ENSURES P-VALUES AND RAREFACTION ARE IDENTICAL EVERY RUN
 output_dir <- "IS-BD-sera-RNAseq"
 if(!dir.exists(output_dir)) dir.create(output_dir)
 
@@ -14,10 +14,8 @@ library(ggplot2)
 library(tidyr)
 library(ggpubr)
 library(vegan)
-library(pheatmap)
-library(ggrepel)
-library(clusterProfiler)
-library(org.Hs.eg.db)
+library(ggsignif)
+library(car)
 
 # 2. DATA LOADING & CLEANING
 serum_data <- read.xlsx('20201116Asieh_fpkm_indv.xlsx')
@@ -70,7 +68,7 @@ diversity_results <- data.frame(
   Evenness         = diversity(t_data, index = "shannon") / log(specnumber(t_data))
 )
 
-write.csv(diversity_results, file.path(output_dir, "01_Sera_Diversity_Data.csv"), row.names = FALSE)
+write.csv(diversity_results, file.path(output_dir, "Sera_Diversity_Data.csv"), row.names = FALSE)
 
 plot_diversity <- function(df, y_col, title_text) {
   ggplot(df, aes_string(x = "Group", y = y_col, fill = "Group")) +
@@ -81,90 +79,128 @@ plot_diversity <- function(df, y_col, title_text) {
     labs(title = title_text, y = y_col) + theme(legend.position = "none")
 }
 
-ggsave(file.path(output_dir, "01a_Shannon_Normal.jpeg"), plot_diversity(diversity_results, "Shannon_Standard", "Shannon Entropy (Standard)"), width = 7, height = 5)
-ggsave(file.path(output_dir, "01b_Shannon_Rarefied.jpeg"), plot_diversity(diversity_results, "Shannon_Rarefied", "Shannon Entropy (Rarefied)"), width = 7, height = 5)
-ggsave(file.path(output_dir, "01c_Evenness.jpeg"), plot_diversity(diversity_results, "Evenness", "Pielou's Evenness"), width = 7, height = 5)
-ggsave(file.path(output_dir, "01d_Simpson.jpeg"), plot_diversity(diversity_results, "Simpson", "Simpson Diversity"), width = 7, height = 5)
-ggsave(file.path(output_dir, "01e_Richness.jpeg"), plot_diversity(diversity_results, "Richness", "Gene Richness"), width = 7, height = 5)
+ggsave(file.path(output_dir, "Shannon_Normal.jpeg"), plot_diversity(diversity_results, "Shannon_Standard", "Shannon Entropy (Standard)"), width = 7, height = 5)
+ggsave(file.path(output_dir, "Shannon_Rarefied.jpeg"), plot_diversity(diversity_results, "Shannon_Rarefied", "Shannon Entropy (Rarefied)"), width = 7, height = 5)
+ggsave(file.path(output_dir, "Evenness.jpeg"), plot_diversity(diversity_results, "Evenness", "Pielou's Evenness"), width = 7, height = 5)
+ggsave(file.path(output_dir, "Simpson.jpeg"), plot_diversity(diversity_results, "Simpson", "Simpson Diversity"), width = 7, height = 5)
+ggsave(file.path(output_dir, "Richness.jpeg"), plot_diversity(diversity_results, "Richness", "Gene Richness"), width = 7, height = 5)
 
 # ==============================================================================
-# SECTION 2: INSTABILITY INDEX (TII)
+# SECTION 2: VARIANCE AND FLUCTUATION ANALYSIS (STABILITY VS NOISE)
 # ==============================================================================
 
-baseline_mean <- rowMeans(log_data[, groups == "Bonded"])
-diversity_results$Instability <- apply(log_data, 2, function(x) mean((x - baseline_mean)^2))
 
-p_tii <- ggplot(diversity_results, aes(x = Group, y = Instability, fill = Group)) +
-  geom_boxplot(alpha = 0.7) + geom_jitter(width = 0.2) +
-  stat_compare_means(comparisons = my_comparisons, method = "t.test", label = "p.format") +
-  theme_minimal() + scale_fill_brewer(palette = "Set2") +
-  labs(title = "Transcriptome Instability Index (TII)", y = "Instability Score (MSE)")
-ggsave(file.path(output_dir, "02_Sera_Instability.jpeg"), p_tii, width = 8, height = 6)
+# 1. Descriptive Statistics: Calculate Standard Deviation (SD) and CV
+# This gives you the unbiased numbers to report in your tables
+variance_summary <- diversity_results %>%
+  group_by(Group) %>%
+  summarise(
+    Mean_Shannon = mean(Shannon_Standard),
+    SD_Shannon = sd(Shannon_Standard),
+    Variance = var(Shannon_Standard),
+    CV_Percent = (SD_Shannon / Mean_Shannon) * 100
+  ) %>%
+  arrange(CV_Percent) # Orders from neatest (lowest CV) to most fluctuating
 
-gene_scores <- rowMeans((log_data[, groups == "Bond Disrupted"] - baseline_mean)^2)
-marker_list <- data.frame(Gene = rownames(log_data), Instability_Score = gene_scores) %>% 
-  arrange(desc(Instability_Score))
-write.csv(marker_list, file.path(output_dir, "02_Sera_Instability_Markers.csv"), row.names = FALSE)
+print("--- Descriptive Fluctuation (Coefficient of Variation) ---")
+print(variance_summary)
 
-# ==============================================================================
-# SECTION 3: SUPERVISED HEATMAPS & PCA
-# ==============================================================================
+# 2. Inferential Statistics: Pairwise F-Tests for Equality of Variance
+# We compare the variance of the "neat" Bonded group against the others.
 
-pca_res <- prcomp(t(log_data[apply(log_data, 1, var) > 0, ]), scale. = TRUE)
-pca_df <- data.frame(PC1 = pca_res$x[,1], PC2 = pca_res$x[,2], Group = groups)
-p_pca <- ggplot(pca_df, aes(x = PC1, y = PC2, color = Group, shape = Group)) +
-  geom_point(size = 5) + theme_bw() + labs(title = "PCA: Serum Sample Clustering")
-ggsave(file.path(output_dir, "03_Sera_PCA.jpeg"), p_pca, width = 8, height = 6)
+bonded_data <- diversity_results$Shannon_Standard[diversity_results$Group == "Bonded"]
+bd_data <- diversity_results$Shannon_Standard[diversity_results$Group == "Bond Disrupted"]
+virgin_data <- diversity_results$Shannon_Standard[diversity_results$Group == "Virgin"]
 
-# Supervised Heatmap
-top_50 <- head(marker_list$Gene, 50)
-annotation_df <- data.frame(Group = groups, row.names = clean_labels)
-jpeg(file.path(output_dir, "04_Sera_Heatmap_Supervised.jpeg"), width = 1000, height = 1200, res = 150)
-pheatmap(log_data[top_50, ], annotation_col = annotation_df, scale = "row", 
-         cluster_cols = FALSE, show_colnames = TRUE,
-         main = "Top 50 Unstable Markers",
-         color = colorRampPalette(c("navy", "white", "firebrick3"))(100))
-dev.off()
+print("--- F-Test: Bonded vs Bond Disrupted Variance ---")
+ftest_bd <- var.test(bonded_data, bd_data)
 
-# Correlation Heatmap
-jpeg(file.path(output_dir, "05_Sera_Correlation.jpeg"), width = 1000, height = 1000, res = 150)
-pheatmap(cor(log_data), display_numbers = TRUE, main = "Sample Correlation")
-dev.off()
+print(ftest_bd)
+
+print("--- F-Test: Bonded vs Virgin Variance ---")
+ftest_v <- var.test(bonded_data, virgin_data)
+print(ftest_v)
+
+# 3. Global Robust Variance Test (Levene's Test)
+# This tests if the fluctuation is significantly different across ALL groups
+print("--- Levene's Test for Homogeneity of Variance (Global) ---")
+levene_res <- leveneTest(Shannon_Standard ~ Group, data = diversity_results)
+print(levene_res)
 
 # ==============================================================================
-# SECTION 4: FUNCTIONAL ANALYSIS
+# SECTION 3: CV BAR CHART WITH EXACT 4-DIGIT P-VALUES
 # ==============================================================================
 
-go_res <- enrichGO(gene = head(marker_list$Gene, 200), OrgDb = org.Hs.eg.db, keyType = "SYMBOL", ont = "BP")
-ggsave(file.path(output_dir, "06_Sera_Pathways.jpeg"), dotplot(go_res), width = 10, height = 7)
 
-# ==============================================================================
-# SECTION 5: PCA LOADINGS & TOP MARKER CHECK (With P-Values)
-# ==============================================================================
+# 1. Define the group order to keep the graph logical
+group_order <- c("Bonded", "Bond Disrupted", "Virgin", "Control (FBS)")
 
-pc_loadings <- as.data.frame(pca_res$rotation) %>% mutate(Gene = rownames(.)) %>%
-  dplyr::select(Gene, PC1, PC2) %>% arrange(desc(abs(PC2))) 
-write.csv(pc_loadings, file.path(output_dir, "07_Sera_PCA_Loadings.csv"), row.names = FALSE)
+# 2. Re-summarize the CV data to ensure correct factor ordering
+variance_summary <- diversity_results %>%
+  group_by(Group) %>%
+  summarise(
+    Mean_Shannon = mean(Shannon_Standard),
+    SD_Shannon = sd(Shannon_Standard),
+    CV_Percent = (SD_Shannon / Mean_Shannon) * 100
+  ) %>%
+  mutate(Group = factor(Group, levels = group_order))
 
-# Extract and plot the single most influential gene with significance brackets
-top_gene <- pc_loadings$Gene[1]
-gene_plot_data <- data.frame(
-  Group = groups, 
-  Expression = as.numeric(log_data[top_gene, ])
-)
+write.xlsx(variance_summary, file.path(output_dir, "Sera_Variance_Summary.xlsx"))
 
-p_top_marker <- ggplot(gene_plot_data, aes(x = Group, y = Expression, fill = Group)) +
-  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
-  geom_jitter(width = 0.2, size = 2.5) +
-  # Adding statistical significance brackets for each pair
-  stat_compare_means(comparisons = my_comparisons, method = "t.test", label = "p.format") +
-  theme_minimal() + 
+# 3. Helper function: Calculate F-test and force 4-decimal formatting
+get_var_pval <- function(g1, g2) {
+  v1 <- diversity_results$Shannon_Standard[diversity_results$Group == g1]
+  v2 <- diversity_results$Shannon_Standard[diversity_results$Group == g2]
+  res <- var.test(v1, v2)
+  
+  # Format the p-value to exactly 4 decimal places
+  return(sprintf("p = %.4f", res$p.value))
+}
+
+# 4. Calculate exact p-values for all 6 combinations
+p_B_BD <- get_var_pval("Bonded", "Bond Disrupted")
+p_B_V  <- get_var_pval("Bonded", "Virgin")
+p_B_C  <- get_var_pval("Bonded", "Control (FBS)")
+p_BD_V <- get_var_pval("Bond Disrupted", "Virgin")
+p_BD_C <- get_var_pval("Bond Disrupted", "Control (FBS)")
+p_V_C  <- get_var_pval("Virgin", "Control (FBS)")
+
+# 5. Build the final plot
+plot_cv_stats <- ggplot(variance_summary, aes(x = Group, y = CV_Percent, fill = Group)) +
+  geom_bar(stat = "identity", alpha = 0.9, color = "black", width = 0.6) +
+  geom_text(aes(label = round(CV_Percent, 3)), vjust = -0.5, size = 4, fontface = "bold") +
+  theme_minimal() +
   scale_fill_brewer(palette = "Set2") +
-  labs(title = paste("Top PCA Driver (PC2):", top_gene), 
-       subtitle = "P-values calculated via t-test for each group pair",
-       y = "log2(FPKM+1)") +
-  theme(legend.position = "none")
+  
+  # Expand the Y-axis to make room for 6 layers of brackets
+  coord_cartesian(ylim = c(0, 0.85)) + 
+  
+  labs(title = "Transcriptomic Fluctuation (Variance) by Group",
+       subtitle = "Pairwise F-tests comparing variance of Shannon Entropy",
+       y = "Coefficient of Variation (%)", 
+       x = "Group") +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", size = 14),
+        axis.text.x = element_text(size = 11, face = "bold")) +
+  
+  # 6. Add the precisely formatted brackets
+  geom_signif(
+    comparisons = list(
+      c("Bonded", "Bond Disrupted"),     
+      c("Virgin", "Control (FBS)"),      
+      c("Bond Disrupted", "Virgin"),     
+      c("Bonded", "Virgin"),             
+      c("Bond Disrupted", "Control (FBS)"), 
+      c("Bonded", "Control (FBS)")       
+    ),
+    y_position = c(0.50, 0.50, 0.57, 0.64, 0.71, 0.78), 
+    annotations = c(p_B_BD, p_V_C, p_BD_V, p_B_V, p_BD_C, p_B_C),
+    tip_length = 0.02, 
+    textsize = 3.5,
+    vjust = -0.2
+  )
 
-ggsave(file.path(output_dir, "08_Sera_Top_Marker_with_P.jpeg"), p_top_marker, width = 8, height = 7, dpi = 300)
+# 7. Save the graph
+ggsave(file.path(output_dir, "Fluctuation_CV_Exact_Pvalues.jpeg"), plot_cv_stats, width = 8, height = 6, dpi = 300)
 
-print("Full scientific analysis complete. All graphs (including Top Marker with P) are saved.")
+
